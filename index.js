@@ -62,6 +62,19 @@ class MinecraftDiscordBot {
         this.lastScoreboard = null;
         this.scoreboardUpdateInterval = null;
 
+        // Safety features
+        this.safetyConfig = {
+            enabled: false, // toggle safety monitoring
+            proximityRadius: 50, // blocks
+            minHealth: 10, // health points (out of 20)
+            alertCooldown: 30000 // 30 seconds between alerts
+        };
+        this.nearbyPlayers = new Map();
+        this.lastHealthAlert = 0;
+        this.lastProximityAlert = 0;
+        this.currentHealth = 20;
+        this.lastHealth = 20;
+
         this.setupDiscordEvents();
         this.setupSlashCommands();
     }
@@ -72,11 +85,15 @@ class MinecraftDiscordBot {
             await this.discordClient.login(CONFIG.discord.token);
             console.log('✅ Discord bot connected successfully!');
 
+            // Set initial Discord activity
+            this.updateDiscordActivity('🔴 Offline', require('discord.js').ActivityType.Watching);
+
             // Start periodic status updates every 30 seconds
             this.statusUpdateInterval = setInterval(() => {
                 if (this.isConnected && this.minecraftBot) {
                     this.updatePositionInfo();
                     this.updateEmbed();
+                    this.updateDiscordActivity();
                 }
             }, 30000);
 
@@ -271,6 +288,8 @@ class MinecraftDiscordBot {
                 this.authMessage = await reaction.message.channel.send({ embeds: [authEmbed] });
                 console.log('🔐 Authentication message sent to Discord channel');
 
+                this.updateDiscordActivity('⏳ Starting connection...', require('discord.js').ActivityType.Watching);
+
                 setTimeout(() => {
                     if (this.authMessage && !this.isConnected) {
                         console.log('🔍 Checking for authentication completion...');
@@ -287,6 +306,7 @@ class MinecraftDiscordBot {
                     this.minecraftBot.quit();
                     this.minecraftBot = null;
                 }
+                this.updateDiscordActivity('🔴 Standby', require('discord.js').ActivityType.Watching);
                 await this.updateEmbed();
             }
 
@@ -336,40 +356,40 @@ class MinecraftDiscordBot {
     }
 
     createEmbed() {
+        const statusColor = this.isConnected ? '#00ff00' : this.shouldJoin ? '#ff9900' : '#ff0000';
         const embed = new EmbedBuilder()
-            .setTitle('🎮 Minecraft Bot Controller')
-            .setColor(this.isConnected ? '#00ff00' : '#ff0000')
+            .setTitle('🎮 Minecraft AFK Bot')
+            .setColor(statusColor)
             .addFields(
-                { name: '🖥️ Server', value: `${CONFIG.minecraft.host}:${CONFIG.minecraft.port}`, inline: true },
-                { name: '📦 Version', value: CONFIG.minecraft.version, inline: true },
-                { name: '🔐 Auth', value: CONFIG.minecraft.auth, inline: true },
-                { name: '🔗 Status', value: this.getStatusText(), inline: false },
-                { name: '🌐 Web Server', value: `Running on port ${CONFIG.webServer.port}`, inline: false }
+                { name: '🖥️ Server', value: `\`${CONFIG.minecraft.host}\``, inline: true },
+                { name: '🔗 Status', value: this.getStatusText(), inline: true },
+                { name: '🛡️ Safety', value: this.safetyConfig.enabled ? (this.isConnected ? '✅ Active' : '❌ Inactive') : '⏸️ Disabled', inline: true }
             );
 
         if (this.isConnected && this.minecraftBot) {
             embed.addFields(
-                { name: '🌍 World', value: this.currentWorld, inline: true },
-                { name: '📍 Coordinates', value: `X: ${Math.round(this.currentCoords.x)}, Y: ${Math.round(this.currentCoords.y)}, Z: ${Math.round(this.currentCoords.z)}`, inline: true },
-                { name: '👤 Username', value: this.minecraftBot.username || 'Unknown', inline: true }
+                { name: '👤 Player', value: `\`${this.minecraftBot.username}\``, inline: true },
+                { name: '🌍 World', value: `\`${this.currentWorld}\``, inline: true },
+                { name: '❤️ Health', value: `\`${this.currentHealth}/20\``, inline: true },
+                { name: '📍 Position', value: `\`${Math.round(this.currentCoords.x)}, ${Math.round(this.currentCoords.y)}, ${Math.round(this.currentCoords.z)}\``, inline: false }
             );
         }
 
         if (this.reconnectAttempts > 0 && this.shouldJoin) {
             embed.addFields({
-                name: '🔄 Auto-Reconnect',
-                value: `Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`,
-                inline: false
+                name: '🔄 Reconnecting',
+                value: `${this.reconnectAttempts}/${this.maxReconnectAttempts}`,
+                inline: true
             });
         }
 
         embed.setTimestamp()
-            .setFooter({ text: '✅ Join Server | ❌ Leave Server' });
+            .setFooter({ text: '✅ Connect | ❌ Disconnect' });
 
         if (this.authUrl && this.userCode) {
             embed.addFields({
-                name: '🔑 Microsoft Authentication Required',
-                value: `Please visit: [${this.authUrl}](${this.authUrl})\nAnd enter code: \`${this.userCode}\``,
+                name: '🔑 Auth Required',
+                value: `[Click here](${this.authUrl}) | Code: \`${this.userCode}\``,
                 inline: false
             });
         }
@@ -400,6 +420,148 @@ class MinecraftDiscordBot {
                 y: this.minecraftBot.entity.position.y,
                 z: this.minecraftBot.entity.position.z
             };
+        }
+    }
+
+    updateDiscordActivity(customStatus = null, activityType = 0) {
+        if (!this.discordClient || !this.discordClient.user) return;
+
+        try {
+            const { ActivityType } = require('discord.js');
+            let status = customStatus;
+            
+            if (!customStatus) {
+                if (this.isConnected && this.minecraftBot) {
+                    const safetyStatus = this.safetyConfig.enabled ? '🛡️' : '';
+                    status = `${safetyStatus} AFK on ${CONFIG.minecraft.host}`;
+                    activityType = ActivityType.Playing;
+                } else if (this.shouldJoin) {
+                    if (this.authUrl && this.userCode) {
+                        status = '🔐 Waiting for auth...';
+                        activityType = ActivityType.Watching;
+                    } else {
+                        status = '⏳ Connecting to server...';
+                        activityType = ActivityType.Watching;
+                    }
+                } else {
+                    status = '🔴 Standby';
+                    activityType = ActivityType.Watching;
+                }
+            }
+
+            this.discordClient.user.setActivity(status, { type: activityType });
+            console.log(`Discord activity updated: ${status}`);
+        } catch (error) {
+            console.error('Failed to update Discord activity:', error);
+        }
+    }
+
+    // Safety Methods
+    async sendSafetyAlert(title, description, color = '#ff0000', isUrgent = false) {
+        try {
+            // Send DM to the user who logged in (reacted with ✅)
+            if (!this.lastAuthUser) {
+                console.log('No authenticated user to send safety alert to');
+                return;
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(title)
+                .setDescription(description)
+                .setColor(color)
+                .addFields(
+                    { name: '📍 **Location**', value: `\`X: ${Math.round(this.currentCoords.x)}, Y: ${Math.round(this.currentCoords.y)}, Z: ${Math.round(this.currentCoords.z)}\``, inline: true },
+                    { name: '🌍 **World**', value: `\`${this.currentWorld}\``, inline: true },
+                    { name: '❤️ **Health**', value: `\`${this.currentHealth}/20\``, inline: true },
+                    { name: '⏰ **Time**', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
+                )
+                .setTimestamp()
+                .setFooter({ text: 'AFK Bot Safety System' });
+
+            const messageContent = isUrgent ? '🚨 **URGENT SAFETY ALERT** 🚨' : '⚠️ **Safety Alert**';
+            
+            await this.lastAuthUser.send({ 
+                content: messageContent, 
+                embeds: [embed] 
+            });
+            
+            console.log(`Safety alert sent to ${this.lastAuthUser.tag}: ${title}`);
+        } catch (error) {
+            console.error('Failed to send safety alert DM:', error);
+            // Fallback to channel if DM fails
+            try {
+                const channel = await this.discordClient.channels.fetch(CONFIG.discord.channelId);
+                if (channel) {
+                    await channel.send({ 
+                        content: `⚠️ Failed to DM ${this.lastAuthUser?.tag || 'user'} - Safety Alert: **${title}**\n${description}` 
+                    });
+                }
+            } catch (fallbackError) {
+                console.error('Failed to send fallback safety alert:', fallbackError);
+            }
+        }
+    }
+
+    checkPlayerProximity() {
+        if (!this.safetyConfig.enabled || !this.minecraftBot || !this.minecraftBot.players) return;
+
+        const now = Date.now();
+        if (now - this.lastProximityAlert < this.safetyConfig.alertCooldown) return;
+
+        const myPos = this.minecraftBot.entity.position;
+        const nearbyPlayers = [];
+
+        for (const [username, player] of Object.entries(this.minecraftBot.players)) {
+            if (username === this.minecraftBot.username) continue;
+            if (!player.entity || !player.entity.position) continue;
+
+            const distance = myPos.distanceTo(player.entity.position);
+            if (distance <= this.safetyConfig.proximityRadius) {
+                nearbyPlayers.push({ username, distance: Math.round(distance) });
+            }
+        }
+
+        if (nearbyPlayers.length > 0) {
+            this.lastProximityAlert = now;
+            const playerList = nearbyPlayers.map(p => `**${p.username}** (${p.distance}m)`).join(', ');
+            this.sendSafetyAlert(
+                '⚠️ Player Proximity Alert',
+                `**${nearbyPlayers.length} player(s) detected within ${this.safetyConfig.proximityRadius} blocks:**\n${playerList}`,
+                '#ff9900',
+                true
+            );
+        }
+    }
+
+    async checkHealth() {
+        if (!this.safetyConfig.enabled || !this.minecraftBot || !this.minecraftBot.health) return;
+
+        this.lastHealth = this.currentHealth;
+        this.currentHealth = this.minecraftBot.health;
+
+        // Check for health decrease (taking damage)
+        if (this.currentHealth < this.lastHealth) {
+            const damage = this.lastHealth - this.currentHealth;
+            this.sendSafetyAlert(
+                '🩸 Damage Taken',
+                `**You took ${damage} damage!**\nHealth decreased from ${this.lastHealth} to ${this.currentHealth}`,
+                '#ff0000',
+                true
+            );
+        }
+
+        // Check for low health
+        const now = Date.now();
+        if (this.currentHealth <= this.safetyConfig.minHealth && 
+            now - this.lastHealthAlert > this.safetyConfig.alertCooldown) {
+            
+            this.lastHealthAlert = now;
+            this.sendSafetyAlert(
+                '💀 Critical Health Alert',
+                `**DANGER: Health is critically low at ${this.currentHealth}/20!**\nConsider disconnecting immediately!`,
+                '#8B0000',
+                true
+            );
         }
     }
 
@@ -569,6 +731,7 @@ class MinecraftDiscordBot {
                 }
             }
 
+            this.updateDiscordActivity();
             await this.updateEmbed();
         });
 
@@ -580,6 +743,12 @@ class MinecraftDiscordBot {
             if (this.minecraftBot && this.minecraftBot.game && this.minecraftBot.game.dimension) {
                 this.currentWorld = this.minecraftBot.game.dimension;
             }
+
+            // Initialize health monitoring
+            this.currentHealth = this.minecraftBot.health || 20;
+            this.lastHealth = this.currentHealth;
+
+            this.updateDiscordActivity();
 
             setTimeout(() => {
                 if (this.minecraftBot) {
@@ -593,6 +762,8 @@ class MinecraftDiscordBot {
 
         this.minecraftBot.on('move', () => {
             this.updatePositionInfo();
+            // Check for nearby players when position updates
+            this.checkPlayerProximity();
         });
 
         this.minecraftBot.on('respawn', () => {
@@ -611,6 +782,7 @@ class MinecraftDiscordBot {
             this.currentWorld = 'Unknown';
             this.currentCoords = { x: 0, y: 0, z: 0 };
 
+            this.updateDiscordActivity();
             await this.updateEmbed();
 
             if (this.shouldJoin) {
@@ -656,6 +828,38 @@ class MinecraftDiscordBot {
             this.userCode = data.user_code;
             this.updateEmbed();
         });
+
+        // Health monitoring events
+        this.minecraftBot.on('health', () => {
+            this.checkHealth();
+        });
+
+        // Player monitoring events
+        this.minecraftBot.on('playerJoined', (player) => {
+            console.log(`Player ${player.username} joined - checking proximity`);
+            setTimeout(() => this.checkPlayerProximity(), 1000);
+        });
+
+        this.minecraftBot.on('playerLeft', (player) => {
+            console.log(`Player ${player.username} left`);
+            this.nearbyPlayers.delete(player.username);
+        });
+
+        // Entity movement monitoring for other players
+        this.minecraftBot.on('entityMoved', (entity) => {
+            // Check if it's another player entity
+            if (entity && entity.type === 'player' && entity.username !== this.minecraftBot.username) {
+                this.checkPlayerProximity();
+            }
+        });
+
+        // Periodic safety checks every 10 seconds
+        setInterval(() => {
+            if (this.isConnected && this.safetyConfig.enabled) {
+                this.checkPlayerProximity();
+                this.checkHealth();
+            }
+        }, 10000);
     }
 
     async extractAuthDetails(message) {
