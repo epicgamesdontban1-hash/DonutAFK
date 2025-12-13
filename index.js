@@ -160,19 +160,21 @@ class MinecraftDiscordBot {
 
     async startWebServer() {
         this.app = express();
-        
+    
         this.app.use(express.json());
         this.app.use(express.static('public'));
         this.setupWebRoutes();
         this.server = http.createServer(this.app);
 
         return new Promise((resolve, reject) => {
-            this.server.listen(CONFIG.webServer.port, CONFIG.webServer.host, (error) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve();
-                }
+        // Handle errors via error event
+            this.server.on('error', (error) => {
+                reject(error);
+            });
+
+            this.server.listen(CONFIG.webServer.port, CONFIG.webServer.host, () => {
+                console.log(`Server listening on port ${CONFIG.webServer.port}`);
+                resolve();
             });
         });
     }
