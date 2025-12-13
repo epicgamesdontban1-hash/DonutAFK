@@ -24,7 +24,7 @@ const CONFIG = {
         auth: 'microsoft'
     },
     webServer: {
-        port: process.env.PORT
+        port: process.env.PORT,
         host: '0.0.0.0'
     }
 };
