@@ -76,7 +76,7 @@ class MinecraftDiscordBot {
 
         // Safety features
         this.safetyConfig = {
-            enabled: true,
+            enabled: false,
             proximityRadius: 50,
             minHealth: 10,
             alertCooldown: 30000,
