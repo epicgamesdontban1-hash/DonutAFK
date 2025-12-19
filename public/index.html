@@ -42,7 +42,6 @@
       min-height: 100vh;
     }
 
-    /* Layout */
     .app {
       max-width: 1200px;
       margin: 0 auto;
@@ -73,7 +72,6 @@
       gap: 20px;
     }
 
-    /* Cards */
     .card {
       background: linear-gradient(135deg, var(--bg-elevated), var(--bg-elevated-soft));
       border-radius: var(--radius);
@@ -132,7 +130,6 @@
       grid-column: 1 / -1;
     }
 
-    /* Status pill */
     .status-pill {
       display: inline-flex;
       align-items: center;
@@ -179,7 +176,6 @@
       50% { opacity: 0.4; }
     }
 
-    /* Rows */
     .row {
       display: flex;
       justify-content: space-between;
@@ -210,7 +206,6 @@
       gap: 8px;
     }
 
-    /* Pills */
     .pill {
       padding: 3px 10px;
       border-radius: 999px;
@@ -244,7 +239,6 @@
       border-color: rgba(107, 114, 128, 0.5);
     }
 
-    /* Buttons */
     .button-row {
       margin-top: 16px;
       display: flex;
@@ -266,6 +260,7 @@
       flex: 1;
       transition: background var(--transition), transform var(--transition),
         box-shadow var(--transition), opacity var(--transition);
+      text-decoration: none;
     }
 
     .btn-primary {
@@ -301,7 +296,6 @@
       transform: translateY(0);
     }
 
-    /* Loading spinner in button */
     .btn .spinner {
       width: 16px;
       height: 16px;
@@ -315,7 +309,6 @@
       to { transform: rotate(360deg); }
     }
 
-    /* Health bar */
     .health-container {
       display: flex;
       align-items: center;
@@ -353,7 +346,6 @@
       min-width: 45px;
     }
 
-    /* Inputs / Chat */
     .input-row {
       display: flex;
       gap: 10px;
@@ -403,29 +395,40 @@
       color: var(--danger);
     }
 
-    /* Auth warning */
     .auth-warning {
       margin-top: 16px;
-      padding: 12px 14px;
+      padding: 14px 16px;
       border-radius: 10px;
       font-size: 0.88rem;
       background: rgba(234, 179, 8, 0.1);
       border: 1px dashed rgba(234, 179, 8, 0.5);
       color: var(--warning);
-      display: flex;
-      align-items: center;
-      gap: 10px;
     }
 
     .auth-warning p {
-      margin: 0;
+      margin: 0 0 12px 0;
+    }
+
+    .auth-details {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .auth-code {
+      font-family: monospace;
+      font-size: 1.1rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 2px;
     }
 
     .hidden {
       display: none !important;
     }
 
-    /* Last updated */
     .last-updated {
       text-align: center;
       margin-top: 24px;
@@ -433,7 +436,6 @@
       color: var(--text-muted);
     }
 
-    /* Responsive */
     @media (max-width: 720px) {
       body {
         padding: 16px;
@@ -464,9 +466,13 @@
       .input-row .btn {
         width: 100%;
       }
+
+      .auth-details {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
 
-    /* Tooltip for coordinates */
     .coords-value {
       font-family: 'SF Mono', 'Fira Code', monospace;
       font-size: 0.88rem;
@@ -476,7 +482,6 @@
       border: 1px solid rgba(55, 65, 81, 0.4);
     }
 
-    /* Safety-specific styles */
     .player-list {
       display: flex;
       flex-wrap: wrap;
@@ -637,7 +642,11 @@
           </div>
 
           <div id="auth-warning" class="auth-warning hidden">
-            <p>Authentication required. Please complete Microsoft login via Discord.</p>
+            <p>Authentication required. Please complete Microsoft login.</p>
+            <div class="auth-details">
+              <a id="auth-link" href="#" target="_blank" class="btn btn-primary">Open Auth Page</a>
+              <span>Code: <strong class="auth-code" id="auth-code">--------</strong></span>
+            </div>
           </div>
         </div>
       </section>
@@ -707,7 +716,7 @@
         </div>
       </section>
 
-      <!-- Safety status (only shown when enabled) -->
+      <!-- Safety status -->
       <section class="card card-safety hidden" id="safety-card">
         <div class="card-header">
           <h2>Safety Monitor</h2>
@@ -744,7 +753,6 @@
             <div class="value" id="safety-blocked-count">0</div>
           </div>
 
-          <!-- Nearby players section -->
           <div class="nearby-players-section" id="nearby-players-section">
             <div class="nearby-players-header">Nearby Players</div>
             <div id="nearby-players-list">
@@ -752,13 +760,11 @@
             </div>
           </div>
 
-          <!-- Active threat alert -->
           <div class="threat-alert hidden" id="threat-alert">
             <div class="threat-alert-title">Threat Detected</div>
             <div id="threat-alert-message">-</div>
           </div>
 
-          <!-- Last disconnect event -->
           <div class="last-event" id="last-event">
             <div class="last-event-header">
               <span class="last-event-title">Last Safety Disconnect</span>
@@ -824,11 +830,12 @@
       btnConnect: document.getElementById('btn-connect'),
       btnDisconnect: document.getElementById('btn-disconnect'),
       authWarning: document.getElementById('auth-warning'),
+      authLink: document.getElementById('auth-link'),
+      authCode: document.getElementById('auth-code'),
       chatInput: document.getElementById('chat-input'),
       btnSendChat: document.getElementById('btn-send-chat'),
       chatStatus: document.getElementById('chat-status'),
       lastUpdate: document.getElementById('last-update'),
-      // Safety elements
       safetyCard: document.getElementById('safety-card'),
       safetyStatusPill: document.getElementById('safety-status-pill'),
       safetyProximity: document.getElementById('safety-proximity'),
@@ -923,7 +930,6 @@
     function updateUI(data) {
       lastData = data;
 
-      // Global status pill
       const { minecraft, discord, safety } = data;
       
       if (minecraft.connected) {
@@ -937,12 +943,10 @@
         elements.globalStatusText.textContent = 'Offline';
       }
 
-      // Connection card
       elements.mcServer.textContent = minecraft.server || '-';
       elements.mcVersion.textContent = minecraft.version || '-';
       elements.mcReconnect.textContent = `${minecraft.reconnectAttempts} / ${minecraft.maxReconnectAttempts}`;
 
-      // MC Status pill
       if (minecraft.connected) {
         elements.mcStatusPill.textContent = 'Online';
         elements.mcStatusPill.className = 'pill pill-online';
@@ -954,25 +958,23 @@
         elements.mcStatusPill.className = 'pill pill-offline';
       }
 
-      // Auth warning
-      if (minecraft.authRequired && !minecraft.connected) {
+      if (minecraft.authRequired && minecraft.authUrl && minecraft.authCode) {
         elements.authWarning.classList.remove('hidden');
+        elements.authLink.href = minecraft.authUrl;
+        elements.authCode.textContent = minecraft.authCode;
       } else {
         elements.authWarning.classList.add('hidden');
       }
 
-      // Minecraft status card
       elements.mcUsername.textContent = minecraft.username || '-';
       elements.mcWorld.textContent = minecraft.world || '-';
       elements.mcCoords.textContent = formatCoords(minecraft.coordinates);
 
-      // Health bar
       const health = minecraft.health ?? 0;
       const healthPercent = (health / 20) * 100;
       elements.healthBarFill.style.width = `${healthPercent}%`;
       elements.healthText.textContent = minecraft.connected ? `${Math.round(health)} / 20` : '- / 20';
 
-      // Health bar color based on health level
       elements.healthBarFill.classList.remove('low', 'medium');
       if (health <= 6) {
         elements.healthBarFill.classList.add('low');
@@ -980,7 +982,6 @@
         elements.healthBarFill.classList.add('medium');
       }
 
-      // Discord status card
       elements.discordUsername.textContent = discord.username || '-';
       elements.discordGuilds.textContent = discord.guildCount ?? '-';
       
@@ -995,18 +996,14 @@
       elements.uptime.textContent = formatUptime(data.uptime);
       elements.memory.textContent = data.memory ? formatBytes(data.memory.heapUsed) : '-';
 
-      // Button states
       elements.btnConnect.disabled = minecraft.connected || minecraft.shouldJoin || isLoading;
       elements.btnDisconnect.disabled = (!minecraft.connected && !minecraft.shouldJoin) || isLoading;
 
-      // Chat input state
       elements.chatInput.disabled = !minecraft.connected;
       elements.btnSendChat.disabled = !minecraft.connected;
 
-      // Safety card
       updateSafetyUI(safety, minecraft.connected);
 
-      // Last update
       elements.lastUpdate.textContent = new Date().toLocaleTimeString();
     }
 
@@ -1018,7 +1015,6 @@
 
       elements.safetyCard.classList.remove('hidden');
 
-      // Update safety status
       if (isConnected) {
         elements.safetyStatusPill.textContent = 'Active';
         elements.safetyStatusPill.className = 'pill pill-online';
@@ -1027,7 +1023,6 @@
         elements.safetyStatusPill.className = 'pill pill-inactive';
       }
 
-      // Update safety config values
       elements.safetyProximity.textContent = `${safety.proximityRadius} blocks`;
       elements.safetyMinHealth.textContent = `${safety.minHealth} HP`;
       elements.safetyDisconnectHealth.textContent = `${safety.autoDisconnectHealth} HP`;
@@ -1035,10 +1030,8 @@
       elements.safetyTrustedCount.textContent = safety.trustedCount ?? 0;
       elements.safetyBlockedCount.textContent = safety.blockedCount ?? 0;
 
-      // Update nearby players
       updateNearbyPlayers(safety.nearbyPlayers, safety.trustedPlayers, safety.blockedPlayers);
 
-      // Update threat alert
       if (safety.activeThreat && isConnected) {
         elements.threatAlert.classList.remove('hidden');
         elements.threatAlertMessage.textContent = safety.activeThreat;
@@ -1048,12 +1041,10 @@
         elements.safetyCard.classList.remove('has-threat');
       }
 
-      // Update last disconnect event
       if (safety.lastDisconnect) {
         elements.lastEventTime.textContent = formatTimeAgo(safety.lastDisconnect.time);
         elements.lastEventReason.textContent = safety.lastDisconnect.reason || 'Unknown reason';
         
-        // Add appropriate class based on reason type
         elements.lastEventReason.className = 'last-event-reason';
         if (safety.lastDisconnect.type === 'threat') {
           elements.lastEventReason.classList.add('threat');
