@@ -489,7 +489,7 @@ class MinecraftDiscordBot {
     createEmbed() {
         const statusColor = this.isConnected ? '#00ff00' : this.shouldJoin ? '#ff9900' : '#ff0000';
         const embed = new EmbedBuilder()
-            .setTitle('🎮 Minecraft AFK Bot')
+            .setTitle('[<:donut:1449408560034480319>] DonutAFK')
             .setColor(statusColor)
             .addFields(
                 { name: '🖥️ Server', value: `\`${CONFIG.minecraft.host}\``, inline: true },
@@ -501,7 +501,7 @@ class MinecraftDiscordBot {
             embed.addFields(
                 { name: '👤 Player', value: `\`${this.minecraftBot.username}\``, inline: true },
                 { name: '🌍 World', value: `\`${this.currentWorld}\``, inline: true },
-                { name: '❤️ Health', value: `\`${this.currentHealth}/20\``, inline: true },
+                { name: '<:mcheart:1449409243479412786> Health', value: `\`${this.currentHealth}/20\``, inline: true },
                 { name: '📍 Position', value: `\`${Math.round(this.currentCoords.x)}, ${Math.round(this.currentCoords.y)}, ${Math.round(this.currentCoords.z)}\``, inline: false }
             );
         }
@@ -611,9 +611,9 @@ class MinecraftDiscordBot {
                     { name: '⏰ Time', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
                 )
                 .setTimestamp()
-                .setFooter({ text: 'AFK Bot Safety System' });
+                .setFooter({ text: 'DonutAFK Safety System' });
 
-            const messageContent = isUrgent ? '🚨 **URGENT SAFETY ALERT** 🚨' : '⚠️ **Safety Alert**';
+            const messageContent = isUrgent ? '🚨 **DonutAFK Safety Alert** 🚨' : '⚠️ **Safety Alert**';
             
             await this.lastAuthUser.send({ 
                 content: messageContent, 
