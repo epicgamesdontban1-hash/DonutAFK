@@ -1,4 +1,3 @@
-require('dotenv').config();
 // ============================================================================
 // DOGGO - Minecraft Discord Bot
 // ============================================================================
@@ -25,7 +24,7 @@ const CONFIG = {
         auth: 'microsoft'
     },
     webServer: {
-        port: process.env.PORT || 3000,
+        port: process.env.PORT || 10000,
         host: '0.0.0.0'
     }
 };
@@ -76,7 +75,7 @@ class MinecraftDiscordBot {
 
         // Safety features
         this.safetyConfig = {
-            enabled: true,
+            enabled: false,
             proximityRadius: 50,
             minHealth: 10,
             alertCooldown: 30000,
