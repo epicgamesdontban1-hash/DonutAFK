@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Minecraft Discord Bot Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-elevated: #0f172a;
+      --bg-elevated-soft: #111827;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.15);
+      --success: #22c55e;
+      --success-soft: rgba(34, 197, 94, 0.15);
+      --warning: #eab308;
+      --warning-soft: rgba(234, 179, 8, 0.15);
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border: #1f2933;
+      --radius: 12px;
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
+      --transition: 0.2s ease;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: var(--font);
+      background: radial-gradient(circle at top, #1d283a, #020617 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Layout */
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .title-group h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      letter-spacing: 0.04em;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    /* Cards */
+    .card {
+      background: linear-gradient(135deg, var(--bg-elevated), var(--bg-elevated-soft));
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 60%);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .card.card-safety::before {
+      background: radial-gradient(circle at top left, rgba(34, 197, 94, 0.1), transparent 60%);
+    }
+
+    .card.card-safety {
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .card.card-safety.has-threat {
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .card.card-safety.has-threat::before {
+      background: radial-gradient(circle at top left, rgba(239, 68, 68, 0.1), transparent 60%);
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.9);
+      background: linear-gradient(90deg, rgba(15, 23, 42, 0.95), rgba(17, 24, 39, 0.95));
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .card-body {
+      padding: 16px 18px 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-wide {
+      grid-column: 1 / -1;
+    }
+
+    /* Status pill */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border: 1px solid rgba(30, 64, 175, 0.6);
+      transition: all var(--transition);
+    }
+
+    .status-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      margin-right: 8px;
+      background: var(--danger);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+      transition: all var(--transition);
+    }
+
+    .status-pill.online .dot {
+      background: var(--success);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.7);
+    }
+
+    .status-pill.online {
+      border-color: rgba(34, 197, 94, 0.6);
+    }
+
+    .status-pill.connecting .dot {
+      background: var(--warning);
+      box-shadow: 0 0 10px rgba(234, 179, 8, 0.7);
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-pill.connecting {
+      border-color: rgba(234, 179, 8, 0.6);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Rows */
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(31, 41, 51, 0.5);
+      font-size: 0.93rem;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .row:first-child {
+      padding-top: 0;
+    }
+
+    .label {
+      color: var(--text-muted);
+    }
+
+    .value {
+      color: var(--text);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Pills */
+    .pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      transition: all var(--transition);
+    }
+
+    .pill-online {
+      background: var(--success-soft);
+      color: var(--success);
+      border-color: rgba(22, 163, 74, 0.5);
+    }
+
+    .pill-offline {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: rgba(220, 38, 38, 0.5);
+    }
+
+    .pill-connecting {
+      background: var(--warning-soft);
+      color: var(--warning);
+      border-color: rgba(234, 179, 8, 0.5);
+    }
+
+    .pill-inactive {
+      background: rgba(107, 114, 128, 0.15);
+      color: #6b7280;
+      border-color: rgba(107, 114, 128, 0.5);
+    }
+
+    /* Buttons */
+    .button-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex: 1;
+      transition: background var(--transition), transform var(--transition),
+        box-shadow var(--transition), opacity var(--transition);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: white;
+      box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(37, 99, 235, 0.5);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: white;
+      box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(239, 68, 68, 0.5);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    /* Loading spinner in button */
+    .btn .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Health bar */
+    .health-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .health-bar {
+      width: 120px;
+      height: 10px;
+      border-radius: 999px;
+      background: #0b1120;
+      overflow: hidden;
+      border: 1px solid rgba(55, 65, 81, 0.6);
+    }
+
+    .health-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      transition: width 0.3s ease, background 0.3s ease;
+      border-radius: 999px;
+    }
+
+    .health-bar-fill.low {
+      background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+
+    .health-bar-fill.medium {
+      background: linear-gradient(90deg, #eab308, #ca8a04);
+    }
+
+    .health-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      min-width: 45px;
+    }
+
+    /* Inputs / Chat */
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    #chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(55, 65, 81, 0.7);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition),
+        background var(--transition);
+    }
+
+    #chat-input:focus {
+      border-color: rgba(59, 130, 246, 0.8);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      background: rgba(2, 6, 23, 0.95);
+    }
+
+    #chat-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    #chat-input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .chat-status {
+      margin: 10px 0 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      min-height: 20px;
+    }
+
+    .chat-status.success {
+      color: var(--success);
+    }
+
+    .chat-status.error {
+      color: var(--danger);
+    }
+
+    /* Auth warning */
+    .auth-warning {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px dashed rgba(234, 179, 8, 0.5);
+      color: var(--warning);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .auth-warning p {
+      margin: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Last updated */
+    .last-updated {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 720px) {
+      body {
+        padding: 16px;
+      }
+
+      .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .button-row {
+        flex-direction: column;
+      }
+
+      .health-bar {
+        width: 100px;
+      }
+
+      .input-row {
+        flex-direction: column;
+      }
+
+      .input-row .btn {
+        width: 100%;
+      }
+    }
+
+    /* Tooltip for coordinates */
+    .coords-value {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.88rem;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(55, 65, 81, 0.4);
+    }
+
+    /* Safety-specific styles */
+    .player-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .player-tag {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(55, 65, 81, 0.5);
+    }
+
+    .player-tag.trusted {
+      background: var(--success-soft);
+      color: var(--success);
+      border-color: rgba(22, 163, 74, 0.4);
+    }
+
+    .player-tag.blocked {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: rgba(220, 38, 38, 0.4);
+    }
+
+    .player-tag.unknown {
+      background: var(--warning-soft);
+      color: var(--warning);
+      border-color: rgba(234, 179, 8, 0.4);
+    }
+
+    .threat-alert {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--danger-soft);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: var(--danger);
+      font-size: 0.88rem;
+    }
+
+    .threat-alert-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .last-event {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(55, 65, 81, 0.4);
+      font-size: 0.85rem;
+    }
+
+    .last-event-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .last-event-title {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .last-event-time {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .last-event-reason {
+      color: var(--text);
+    }
+
+    .last-event-reason.threat {
+      color: var(--danger);
+    }
+
+    .last-event-reason.health {
+      color: var(--warning);
+    }
+
+    .nearby-players-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(31, 41, 51, 0.5);
+    }
+
+    .nearby-players-header {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .no-players {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="title-group">
+        <h1>DonutAFK</h1>
+        <p class="subtitle">Web Control Panel</p>
+      </div>
+      <div class="status-pill" id="global-status-pill">
+        <span class="dot"></span>
+        <span id="global-status-text">Loading...</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- Connection & control -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Connection</h2>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="label">Server</div>
+            <div class="value" id="mc-server">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Version</div>
+            <div class="value" id="mc-version">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Status</div>
+            <div class="value">
+              <span id="mc-status-pill" class="pill pill-offline">Offline</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="label">Reconnect Attempts</div>
+            <div class="value" id="mc-reconnect">0 / 0</div>
+          </div>
+
+          <div class="button-row">
+            <button id="btn-connect" class="btn btn-primary">
+              <span class="btn-text">Connect</span>
+            </button>
+            <button id="btn-disconnect" class="btn btn-danger">
+              <span class="btn-text">Disconnect</span>
+            </button>
+          </div>
+
+          <div id="auth-warning" class="auth-warning hidden">
+            <p>Authentication required. Please complete Microsoft login via Discord.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Minecraft status -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Minecraft Status</h2>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="label">Username</div>
+            <div class="value" id="mc-username">-</div>
+          </div>
+          <div class="row">
+            <div class="label">World</div>
+            <div class="value" id="mc-world">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Coordinates</div>
+            <div class="value">
+              <span class="coords-value" id="mc-coords">X: 0, Y: 0, Z: 0</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="label">Health</div>
+            <div class="value">
+              <div class="health-container">
+                <div class="health-bar">
+                  <div id="health-bar-fill" class="health-bar-fill"></div>
+                </div>
+                <span id="health-text" class="health-text">- / 20</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Discord status -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Discord Status</h2>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="label">Bot Username</div>
+            <div class="value" id="discord-username">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Connected Guilds</div>
+            <div class="value" id="discord-guilds">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Discord Status</div>
+            <div class="value">
+              <span id="discord-status-pill" class="pill pill-offline">Offline</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="label">Bot Uptime</div>
+            <div class="value" id="uptime">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Memory Usage</div>
+            <div class="value" id="memory">-</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Safety status (only shown when enabled) -->
+      <section class="card card-safety hidden" id="safety-card">
+        <div class="card-header">
+          <h2>Safety Monitor</h2>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="label">Status</div>
+            <div class="value">
+              <span id="safety-status-pill" class="pill pill-online">Active</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="label">Proximity Range</div>
+            <div class="value" id="safety-proximity">50 blocks</div>
+          </div>
+          <div class="row">
+            <div class="label">Min Health Threshold</div>
+            <div class="value" id="safety-min-health">10 HP</div>
+          </div>
+          <div class="row">
+            <div class="label">Auto-Disconnect Health</div>
+            <div class="value" id="safety-disconnect-health">6 HP</div>
+          </div>
+          <div class="row">
+            <div class="label">Auto-Disconnect on Threat</div>
+            <div class="value" id="safety-auto-disconnect">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Trusted Players</div>
+            <div class="value" id="safety-trusted-count">0</div>
+          </div>
+          <div class="row">
+            <div class="label">Blocked Players</div>
+            <div class="value" id="safety-blocked-count">0</div>
+          </div>
+
+          <!-- Nearby players section -->
+          <div class="nearby-players-section" id="nearby-players-section">
+            <div class="nearby-players-header">Nearby Players</div>
+            <div id="nearby-players-list">
+              <span class="no-players">No players nearby</span>
+            </div>
+          </div>
+
+          <!-- Active threat alert -->
+          <div class="threat-alert hidden" id="threat-alert">
+            <div class="threat-alert-title">Threat Detected</div>
+            <div id="threat-alert-message">-</div>
+          </div>
+
+          <!-- Last disconnect event -->
+          <div class="last-event" id="last-event">
+            <div class="last-event-header">
+              <span class="last-event-title">Last Safety Disconnect</span>
+              <span class="last-event-time" id="last-event-time">-</span>
+            </div>
+            <div class="last-event-reason" id="last-event-reason">No disconnects recorded</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chat -->
+      <section class="card card-wide">
+        <div class="card-header">
+          <h2>Send Chat Message</h2>
+        </div>
+        <div class="card-body">
+          <div class="input-row">
+            <input
+              type="text"
+              id="chat-input"
+              placeholder="Type a message to send in Minecraft chat..."
+              disabled
+            />
+            <button id="btn-send-chat" class="btn btn-primary" disabled>
+              <span class="btn-text">Send</span>
+            </button>
+          </div>
+          <p id="chat-status" class="chat-status"></p>
+        </div>
+      </section>
+    </main>
+
+    <p class="last-updated">Last updated: <span id="last-update">Never</span></p>
+  </div>
+
+  <script>
+    // ========================================================================
+    // Configuration
+    // ========================================================================
+    const API_BASE = '';
+    const REFRESH_INTERVAL = 3000;
+
+    // ========================================================================
+    // DOM Elements
+    // ========================================================================
+    const elements = {
+      globalStatusPill: document.getElementById('global-status-pill'),
+      globalStatusText: document.getElementById('global-status-text'),
+      mcServer: document.getElementById('mc-server'),
+      mcVersion: document.getElementById('mc-version'),
+      mcStatusPill: document.getElementById('mc-status-pill'),
+      mcReconnect: document.getElementById('mc-reconnect'),
+      mcUsername: document.getElementById('mc-username'),
+      mcWorld: document.getElementById('mc-world'),
+      mcCoords: document.getElementById('mc-coords'),
+      healthBarFill: document.getElementById('health-bar-fill'),
+      healthText: document.getElementById('health-text'),
+      discordUsername: document.getElementById('discord-username'),
+      discordGuilds: document.getElementById('discord-guilds'),
+      discordStatusPill: document.getElementById('discord-status-pill'),
+      uptime: document.getElementById('uptime'),
+      memory: document.getElementById('memory'),
+      btnConnect: document.getElementById('btn-connect'),
+      btnDisconnect: document.getElementById('btn-disconnect'),
+      authWarning: document.getElementById('auth-warning'),
+      chatInput: document.getElementById('chat-input'),
+      btnSendChat: document.getElementById('btn-send-chat'),
+      chatStatus: document.getElementById('chat-status'),
+      lastUpdate: document.getElementById('last-update'),
+      // Safety elements
+      safetyCard: document.getElementById('safety-card'),
+      safetyStatusPill: document.getElementById('safety-status-pill'),
+      safetyProximity: document.getElementById('safety-proximity'),
+      safetyMinHealth: document.getElementById('safety-min-health'),
+      safetyDisconnectHealth: document.getElementById('safety-disconnect-health'),
+      safetyAutoDisconnect: document.getElementById('safety-auto-disconnect'),
+      safetyTrustedCount: document.getElementById('safety-trusted-count'),
+      safetyBlockedCount: document.getElementById('safety-blocked-count'),
+      nearbyPlayersSection: document.getElementById('nearby-players-section'),
+      nearbyPlayersList: document.getElementById('nearby-players-list'),
+      threatAlert: document.getElementById('threat-alert'),
+      threatAlertMessage: document.getElementById('threat-alert-message'),
+      lastEvent: document.getElementById('last-event'),
+      lastEventTime: document.getElementById('last-event-time'),
+      lastEventReason: document.getElementById('last-event-reason')
+    };
+
+    // ========================================================================
+    // State
+    // ========================================================================
+    let isLoading = false;
+    let lastData = null;
+
+    // ========================================================================
+    // Utility Functions
+    // ========================================================================
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 MB';
+      const mb = bytes / (1024 * 1024);
+      return `${mb.toFixed(1)} MB`;
+    }
+
+    function formatUptime(seconds) {
+      if (!seconds) return '-';
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+
+      if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+      if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+      if (minutes > 0) return `${minutes}m ${secs}s`;
+      return `${secs}s`;
+    }
+
+    function formatCoords(coords) {
+      if (!coords) return 'X: 0, Y: 0, Z: 0';
+      return `X: ${Math.round(coords.x)}, Y: ${Math.round(coords.y)}, Z: ${Math.round(coords.z)}`;
+    }
+
+    function formatTimeAgo(timestamp) {
+      if (!timestamp) return '-';
+      const now = Date.now();
+      const diff = now - timestamp;
+      
+      const seconds = Math.floor(diff / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (days > 0) return `${days}d ago`;
+      if (hours > 0) return `${hours}h ago`;
+      if (minutes > 0) return `${minutes}m ago`;
+      return `${seconds}s ago`;
+    }
+
+    function setButtonLoading(button, loading, text) {
+      const btnText = button.querySelector('.btn-text');
+      if (loading) {
+        btnText.innerHTML = '<span class="spinner"></span> Loading...';
+        button.disabled = true;
+      } else {
+        btnText.textContent = text;
+      }
+    }
+
+    function showChatStatus(message, type = '') {
+      elements.chatStatus.textContent = message;
+      elements.chatStatus.className = `chat-status ${type}`;
+      
+      if (message) {
+        setTimeout(() => {
+          elements.chatStatus.textContent = '';
+          elements.chatStatus.className = 'chat-status';
+        }, 4000);
+      }
+    }
+
+    // ========================================================================
+    // Update UI
+    // ========================================================================
+    function updateUI(data) {
+      lastData = data;
+
+      // Global status pill
+      const { minecraft, discord, safety } = data;
+      
+      if (minecraft.connected) {
+        elements.globalStatusPill.className = 'status-pill online';
+        elements.globalStatusText.textContent = `Online as ${minecraft.username}`;
+      } else if (minecraft.shouldJoin) {
+        elements.globalStatusPill.className = 'status-pill connecting';
+        elements.globalStatusText.textContent = minecraft.authRequired ? 'Awaiting Auth...' : 'Connecting...';
+      } else {
+        elements.globalStatusPill.className = 'status-pill';
+        elements.globalStatusText.textContent = 'Offline';
+      }
+
+      // Connection card
+      elements.mcServer.textContent = minecraft.server || '-';
+      elements.mcVersion.textContent = minecraft.version || '-';
+      elements.mcReconnect.textContent = `${minecraft.reconnectAttempts} / ${minecraft.maxReconnectAttempts}`;
+
+      // MC Status pill
+      if (minecraft.connected) {
+        elements.mcStatusPill.textContent = 'Online';
+        elements.mcStatusPill.className = 'pill pill-online';
+      } else if (minecraft.shouldJoin) {
+        elements.mcStatusPill.textContent = 'Connecting';
+        elements.mcStatusPill.className = 'pill pill-connecting';
+      } else {
+        elements.mcStatusPill.textContent = 'Offline';
+        elements.mcStatusPill.className = 'pill pill-offline';
+      }
+
+      // Auth warning
+      if (minecraft.authRequired && !minecraft.connected) {
+        elements.authWarning.classList.remove('hidden');
+      } else {
+        elements.authWarning.classList.add('hidden');
+      }
+
+      // Minecraft status card
+      elements.mcUsername.textContent = minecraft.username || '-';
+      elements.mcWorld.textContent = minecraft.world || '-';
+      elements.mcCoords.textContent = formatCoords(minecraft.coordinates);
+
+      // Health bar
+      const health = minecraft.health ?? 0;
+      const healthPercent = (health / 20) * 100;
+      elements.healthBarFill.style.width = `${healthPercent}%`;
+      elements.healthText.textContent = minecraft.connected ? `${Math.round(health)} / 20` : '- / 20';
+
+      // Health bar color based on health level
+      elements.healthBarFill.classList.remove('low', 'medium');
+      if (health <= 6) {
+        elements.healthBarFill.classList.add('low');
+      } else if (health <= 12) {
+        elements.healthBarFill.classList.add('medium');
+      }
+
+      // Discord status card
+      elements.discordUsername.textContent = discord.username || '-';
+      elements.discordGuilds.textContent = discord.guildCount ?? '-';
+      
+      if (discord.connected) {
+        elements.discordStatusPill.textContent = 'Online';
+        elements.discordStatusPill.className = 'pill pill-online';
+      } else {
+        elements.discordStatusPill.textContent = 'Offline';
+        elements.discordStatusPill.className = 'pill pill-offline';
+      }
+
+      elements.uptime.textContent = formatUptime(data.uptime);
+      elements.memory.textContent = data.memory ? formatBytes(data.memory.heapUsed) : '-';
+
+      // Button states
+      elements.btnConnect.disabled = minecraft.connected || minecraft.shouldJoin || isLoading;
+      elements.btnDisconnect.disabled = (!minecraft.connected && !minecraft.shouldJoin) || isLoading;
+
+      // Chat input state
+      elements.chatInput.disabled = !minecraft.connected;
+      elements.btnSendChat.disabled = !minecraft.connected;
+
+      // Safety card
+      updateSafetyUI(safety, minecraft.connected);
+
+      // Last update
+      elements.lastUpdate.textContent = new Date().toLocaleTimeString();
+    }
+
+    function updateSafetyUI(safety, isConnected) {
+      if (!safety || !safety.enabled) {
+        elements.safetyCard.classList.add('hidden');
+        return;
+      }
+
+      elements.safetyCard.classList.remove('hidden');
+
+      // Update safety status
+      if (isConnected) {
+        elements.safetyStatusPill.textContent = 'Active';
+        elements.safetyStatusPill.className = 'pill pill-online';
+      } else {
+        elements.safetyStatusPill.textContent = 'Inactive';
+        elements.safetyStatusPill.className = 'pill pill-inactive';
+      }
+
+      // Update safety config values
+      elements.safetyProximity.textContent = `${safety.proximityRadius} blocks`;
+      elements.safetyMinHealth.textContent = `${safety.minHealth} HP`;
+      elements.safetyDisconnectHealth.textContent = `${safety.autoDisconnectHealth} HP`;
+      elements.safetyAutoDisconnect.textContent = safety.autoDisconnectOnThreat ? 'Enabled' : 'Disabled';
+      elements.safetyTrustedCount.textContent = safety.trustedCount ?? 0;
+      elements.safetyBlockedCount.textContent = safety.blockedCount ?? 0;
+
+      // Update nearby players
+      updateNearbyPlayers(safety.nearbyPlayers, safety.trustedPlayers, safety.blockedPlayers);
+
+      // Update threat alert
+      if (safety.activeThreat && isConnected) {
+        elements.threatAlert.classList.remove('hidden');
+        elements.threatAlertMessage.textContent = safety.activeThreat;
+        elements.safetyCard.classList.add('has-threat');
+      } else {
+        elements.threatAlert.classList.add('hidden');
+        elements.safetyCard.classList.remove('has-threat');
+      }
+
+      // Update last disconnect event
+      if (safety.lastDisconnect) {
+        elements.lastEventTime.textContent = formatTimeAgo(safety.lastDisconnect.time);
+        elements.lastEventReason.textContent = safety.lastDisconnect.reason || 'Unknown reason';
+        
+        // Add appropriate class based on reason type
+        elements.lastEventReason.className = 'last-event-reason';
+        if (safety.lastDisconnect.type === 'threat') {
+          elements.lastEventReason.classList.add('threat');
+        } else if (safety.lastDisconnect.type === 'health') {
+          elements.lastEventReason.classList.add('health');
+        }
+      } else {
+        elements.lastEventTime.textContent = '-';
+        elements.lastEventReason.textContent = 'No disconnects recorded';
+        elements.lastEventReason.className = 'last-event-reason';
+      }
+    }
+
+    function updateNearbyPlayers(nearbyPlayers, trustedPlayers, blockedPlayers) {
+      if (!nearbyPlayers || nearbyPlayers.length === 0) {
+        elements.nearbyPlayersList.innerHTML = '<span class="no-players">No players nearby</span>';
+        return;
+      }
+
+      const trustedSet = new Set(trustedPlayers || []);
+      const blockedSet = new Set(blockedPlayers || []);
+
+      const html = nearbyPlayers.map(player => {
+        let tagClass = 'unknown';
+        let distance = '';
+        
+        if (typeof player === 'object') {
+          if (trustedSet.has(player.username)) {
+            tagClass = 'trusted';
+          } else if (blockedSet.has(player.username)) {
+            tagClass = 'blocked';
+          }
+          distance = player.distance ? ` (${player.distance}m)` : '';
+          return `<span class="player-tag ${tagClass}">${player.username}${distance}</span>`;
+        } else {
+          if (trustedSet.has(player)) {
+            tagClass = 'trusted';
+          } else if (blockedSet.has(player)) {
+            tagClass = 'blocked';
+          }
+          return `<span class="player-tag ${tagClass}">${player}</span>`;
+        }
+      }).join('');
+
+      elements.nearbyPlayersList.innerHTML = html;
+    }
+
+    // ========================================================================
+    // API Functions
+    // ========================================================================
+    async function fetchStatus() {
+      try {
+        const response = await fetch(`${API_BASE}/status`);
+        if (!response.ok) throw new Error('Failed to fetch status');
+        const data = await response.json();
+        updateUI(data);
+      } catch (error) {
+        console.error('Status fetch error:', error);
+        elements.globalStatusPill.className = 'status-pill';
+        elements.globalStatusText.textContent = 'Connection Error';
+      }
+    }
+
+    async function connectBot() {
+      if (isLoading) return;
+      isLoading = true;
+      
+      setButtonLoading(elements.btnConnect, true);
+      
+      try {
+        const response = await fetch(`${API_BASE}/connect`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (!data.success) {
+          showChatStatus(data.message || 'Failed to connect', 'error');
+        }
+      } catch (error) {
+        showChatStatus('Connection request failed', 'error');
+      } finally {
+        isLoading = false;
+        setButtonLoading(elements.btnConnect, false, 'Connect');
+        fetchStatus();
+      }
+    }
+
+    async function disconnectBot() {
+      if (isLoading) return;
+      isLoading = true;
+      
+      setButtonLoading(elements.btnDisconnect, true);
+      
+      try {
+        const response = await fetch(`${API_BASE}/disconnect`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+          showChatStatus('Bot disconnected successfully', 'success');
+        } else {
+          showChatStatus(data.message || 'Failed to disconnect', 'error');
+        }
+      } catch (error) {
+        showChatStatus('Disconnect request failed', 'error');
+      } finally {
+        isLoading = false;
+        setButtonLoading(elements.btnDisconnect, false, 'Disconnect');
+        fetchStatus();
+      }
+    }
+
+    async function sendChat() {
+      const message = elements.chatInput.value.trim();
+      if (!message) return;
+      
+      elements.btnSendChat.disabled = true;
+      
+      try {
+        const response = await fetch(`${API_BASE}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showChatStatus(`Message sent: "${message}"`, 'success');
+          elements.chatInput.value = '';
+        } else {
+          showChatStatus(data.message || 'Failed to send message', 'error');
+        }
+      } catch (error) {
+        showChatStatus('Failed to send message', 'error');
+      } finally {
+        elements.btnSendChat.disabled = !lastData?.minecraft?.connected;
+      }
+    }
+
+    // ========================================================================
+    // Event Listeners
+    // ========================================================================
+    elements.btnConnect.addEventListener('click', connectBot);
+    elements.btnDisconnect.addEventListener('click', disconnectBot);
+    elements.btnSendChat.addEventListener('click', sendChat);
+
+    elements.chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !elements.btnSendChat.disabled) {
+        sendChat();
+      }
+    });
+
+    // ========================================================================
+    // Initialize
+    // ========================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchStatus();
+      setInterval(fetchStatus, REFRESH_INTERVAL);
+    });
+  </script>
+</body>
+</html>
