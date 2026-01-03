@@ -20,7 +20,7 @@ const CONFIG = {
     minecraft: {
         host: 'donutsmp.net',
         port: 25565,
-        version: '1.21.4',
+        version: '1.21.8',
         auth: 'microsoft'
     },
     webServer: {
